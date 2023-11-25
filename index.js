@@ -42,67 +42,19 @@ async function run() {
   try {
     const database = client.db("lifePulsDB")
     const bioDataCollection = database.collection("biodatas")
-   app.post('/biodata', async(req , res) => {
-    const biodata = req.body
-    // const query = {biodataId : biodata?.biodataId}
-    // console.log(query)
-    // const isExisted =await bioDataCollection.findOne(query)
-    if( biodata?.biodataId){
-      const filter = {biodataId : biodata?.biodataId}
-      console.log(filter)
-      const options = { upsert: true }
-      const updateDoc = {
-        $set: {
-          DateOfBirth:biodata?.DateOfBirth,
-          age:biodata?.age,
-          biodataType:biodata?.biodataType,
-          division:biodata?.division,
-          email:biodata?.email,
-          expectedPartnerAge:biodata?.expectedPartnerAge,
-          expectedPartnerHeight:biodata?.expectedPartnerHeight,
-          expectedPartnerWeight:biodata?.expectedPartnerWeight,
-          fathersName:biodata?.fathersName,
-          height:biodata?.height,
-          mobileNumber:biodata?.mobileNumber,
-          mothersName:biodata?.mothersName,
-          name:biodata?.name,
-          occupation:biodata?.occupation,
-          profileLink:biodata?.profileLink,
-          race:biodata?.race,
-          weight:biodata?.weight
-  }
-}
-      // set end
  
-    const updateResult = await bioDataCollection.updateOne(filter, updateDoc, options)
-    res.send(updateResult)
-    return;
-   }
-  //  const biodataCount = await bioDataCollection.estimatedDocumentCount()
-  //  console.log(biodataCount)
-  //  if(biodataCount){
-  //    biodata.biodataId = biodataCount + 1
-  //    res.send(biodata?.biodataId)
-  //  }
-
-
-
-//   const filter = {biodataId : biodata?.biodataId}
-//   console.log(filter)
-//   const options = { upsert: true }
-//   const updateDoc = {
-//     $set: {
-     
-//    }
-// }
-   
-   
-    const postResult =await bioDataCollection.insertOne(biodata)
-    res.send(postResult)
-  
-
-   })
     // await client.connect();
+app.get('/allBiodata' , async(req , res) => {
+  const cursor = bioDataCollection.find()
+  const result = await cursor.toArray()
+  res.send(result)
+})
+app.get('/biodata/:email' , async(req,res)=>{
+  const email = req.params.email
+  const query = {email : email}
+  const result =await bioDataCollection.findOne(query)
+  res.send(result)
+})
 app.put('/biodata', async (req , res)=>{
   const biodata = req.body
   const filter = {email : biodata?.email}
