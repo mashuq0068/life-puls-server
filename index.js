@@ -63,7 +63,7 @@ app.put('/biodata', async (req , res)=>{
   const existedBiodata = await bioDataCollection.findOne(query)
    console.log(biodataCount)
   console.log(filter)
-  const options = { upsert: true }
+  const options = { upsert: true}
 
   const updateDoc = {
     $set: {
@@ -86,8 +86,11 @@ app.put('/biodata', async (req , res)=>{
       race:biodata?.race,
       weight:biodata?.weight
 }
+
 }
+
 const updateResult = await bioDataCollection.updateOne(filter, updateDoc, options)
+console.log(updateResult)
 res.send(updateResult)
 
 
