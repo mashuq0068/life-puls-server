@@ -49,6 +49,45 @@ app.get('/allBiodata' , async(req , res) => {
   const result = await cursor.toArray()
   res.send(result)
 })
+
+app.get('/filterBiodata', async (req, res) => {
+  const { minAge, maxAge, division, biodataType } = req.query;
+  console.log(req.query);
+
+  const filter = {
+    $and: [
+      minAge && { age: { $gte: parseInt(minAge) } },
+      maxAge && { age: { $lte: parseInt(maxAge) } },
+      division && { division: division },
+      biodataType && { biodataType: biodataType?.toLowerCase() },
+    ].filter(Boolean),
+  };
+
+  console.log(filter);
+  const result = await bioDataCollection.find(req.query).toArray();
+  console.log(result);
+
+  // if (result.length === 0) {
+  //   res.status(404).send('No matching records found.');
+  // } else {
+  //   res.send(result);
+  res.send(result)
+  // }
+});
+app.get('/countBiodata' , async(req , res) => {
+  const count = await bioDataCollection.estimatedDocumentCount()
+  console.log(count)
+  res.send({count})
+})
+app.get('/paginationBiodata', async(req, res) => {
+  const skipPages = parseInt(req.query.skipPages)
+  const perPageData = parseInt(req.query.pageData)
+  console.log(skipPages , perPageData)
+    const result = await bioDataCollection.find().skip(skipPages*perPageData).limit(perPageData).toArray();
+    res.send(result);
+})
+
+
 app.get('/biodata/:email' , async(req,res)=>{
   const email = req.params.email
   const query = {email : email}
