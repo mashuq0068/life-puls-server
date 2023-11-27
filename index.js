@@ -3,6 +3,7 @@ const app  =express()
 const port = process.env.PORT || 5000
 require ('dotenv').config()
 const cors = require('cors')
+const jwt = require("jsonwebtoken")
 app.use(express.json())
 app.use(cors())
  
@@ -37,11 +38,28 @@ const client = new MongoClient(uri, {
 //   next()
 
 // }
+const verifyToken = (req , res ,next) => {
+  console.log(req.headers.authorization)
+  if(!req.headers.authorization){
+  return res.status(401).send({message : "Unauthorized Access"})
+  }
+ const token = req.headers.authorization.split(' ')[1]
+ console.log("verify token is" , token)
+ jwt.verify(token , process.env.TOKEN_SECRET , (err , decoded) => {
+  if(err){
+    return res.status(401).send({message : "Unauthorized Access"})
+  }
+  req.decoded = decoded;
+  next();
+ })
+
+}
 
 async function run() {
   try {
     const database = client.db("lifePulsDB")
     const bioDataCollection = database.collection("biodatas")
+    const favoritesCollection = database.collection("favorites")
  
     // await client.connect();
 app.get('/allBiodata' , async(req , res) => {
@@ -50,30 +68,7 @@ app.get('/allBiodata' , async(req , res) => {
   res.send(result)
 })
 
-app.get('/filterBiodata', async (req, res) => {
-  const { minAge, maxAge, division, biodataType } = req.query;
-  console.log(req.query);
 
-  const filter = {
-    $and: [
-      minAge && { age: { $gte: parseInt(minAge) } },
-      maxAge && { age: { $lte: parseInt(maxAge) } },
-      division && { division: division },
-      biodataType && { biodataType: biodataType?.toLowerCase() },
-    ].filter(Boolean),
-  };
-
-  console.log(filter);
-  const result = await bioDataCollection.find(req.query).toArray();
-  console.log(result);
-
-  // if (result.length === 0) {
-  //   res.status(404).send('No matching records found.');
-  // } else {
-  //   res.send(result);
-  res.send(result)
-  // }
-});
 app.get('/countBiodata' , async(req , res) => {
   const count = await bioDataCollection.estimatedDocumentCount()
   console.log(count)
@@ -86,10 +81,15 @@ app.get('/paginationBiodata', async(req, res) => {
     const result = await bioDataCollection.find().skip(skipPages*perPageData).limit(perPageData).toArray();
     res.send(result);
 })
+ 
 
-
-app.get('/biodata/:email' , async(req,res)=>{
-  const email = req.params.email
+app.get('/biodata/:email',verifyToken, async(req,res)=>{
+  const paramsEmail = req.params?.email
+  // console.log(req.decoded?.email)
+  // if(req.decoded?.email !== paramsEmail){
+  //   return res.status(403).send({message : "Forbidden Access"})
+  // }
+  const email = paramsEmail
   const query = {email : email}
   const result =await bioDataCollection.findOne(query)
   res.send(result)
@@ -134,8 +134,42 @@ res.send(updateResult)
 
 
 })
+app.get('/favorites/:email' , verifyToken, async(req , res) => {
+  const email = req.params.email
+   console.log(req.decoded?.email)
+  if(req.decoded?.email !== email){
+    return res.status(403).send({message : "Forbidden Access"})
+  }
+  
+  const query = {userEmail : email}
+  const result = await favoritesCollection.find(query).toArray()
+  res.send(result)
+})
+app.post('/favorite',verifyToken, async(req, res) => {
+  const favorite = req.body
+  const query = {biodataId : req?.body?.biodataId}
+  const isExisted = await favoritesCollection.findOne(query)
+  if(isExisted){
+    res.send({message : "already included"})
+    return
+  }
 
-   
+ 
+  const result =await favoritesCollection.insertOne(favorite)
+  res.send(result)
+})
+app.delete('/favorite/:id' ,verifyToken, async(req , res) => {
+  const id = req.params.id
+  const query = {_id : new ObjectId(id)}
+  const result = await favoritesCollection.deleteOne(query)
+  res.send(result)
+})
+
+app.post('/jwt' , async(req , res) => {
+  const user = req.body
+  const token = jwt.sign(user , process.env.TOKEN_SECRET)
+  res.send({token})
+})
 
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
