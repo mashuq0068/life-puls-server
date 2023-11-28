@@ -18,26 +18,7 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
-// const generateBioDataId = async(req, res, next) =>{
-//   const biodata = req.body
-//   if(bioDataCollection){
-//   const biodataCount = await bioDataCollection.estimatedDocumentCount()
-//   console.log(biodataCount)
-//   if(biodataCount && !biodata?.biodataId){
-//     biodata.biodataId = biodataCount + 1
-//     res.send(biodata?.biodataId)
-//     next()
-//     return
-//   }
-//   biodata.biodataId = 1
-//   res.send(biodata?.biodataId)
-//   next()
-//   return
-//   }
- 
-//   next()
 
-// }
 const verifyToken = (req , res ,next) => {
   console.log(req.headers.authorization)
   if(!req.headers.authorization){
@@ -60,6 +41,7 @@ async function run() {
     const database = client.db("lifePulsDB")
     const bioDataCollection = database.collection("biodatas")
     const favoritesCollection = database.collection("favorites")
+    const premiumCollection = database.collection("premiums")
  
     // await client.connect();
 app.get('/allBiodata' , async(req , res) => {
@@ -85,10 +67,6 @@ app.get('/paginationBiodata', async(req, res) => {
 
 app.get('/biodata/:email',verifyToken, async(req,res)=>{
   const paramsEmail = req.params?.email
-  // console.log(req.decoded?.email)
-  // if(req.decoded?.email !== paramsEmail){
-  //   return res.status(403).send({message : "Forbidden Access"})
-  // }
   const email = paramsEmail
   const query = {email : email}
   const result =await bioDataCollection.findOne(query)
@@ -134,6 +112,24 @@ res.send(updateResult)
 
 
 })
+app.post('/premium' , async(req , res) => {
+  const premiumUser = req.body
+  const result = await premiumCollection.insertOne(premiumUser)
+  res.send(result)
+})
+// app.patch('/user/premium/:id', async(req , res) => {
+//   const id = req.params.id
+//   const filter = {biodataId : id}
+//   const options = { upsert: true }
+//   const updatedUser  = {
+//     $set : {
+//      isPremium : true
+//     }
+//   }
+//   // const result = await bioDataCollection.updateOne(filter, updatedUser, options);
+//   // res.send(result)
+// })
+app.post('/pre')
 app.get('/favorites/:email' , verifyToken, async(req , res) => {
   const email = req.params.email
    console.log(req.decoded?.email)
@@ -189,5 +185,3 @@ app.get('/', (req, res) =>{
 app.listen(port, () =>{
     console.log(`The app is running on port ${port}`)
 })
-// lifePuls
-// sLdlzfpZAdpHquyq
