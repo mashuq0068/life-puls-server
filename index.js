@@ -6,6 +6,7 @@ const cors = require('cors')
 const jwt = require("jsonwebtoken")
 app.use(express.json())
 app.use(cors())
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
  
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.hxdwxas.mongodb.net/?retryWrites=true&w=majority`;
@@ -159,12 +160,14 @@ app.get('/favorites/:email' , verifyToken, async(req , res) => {
 })
 app.post('/favorite',verifyToken, async(req, res) => {
   const favorite = req.body
-  const query = {biodataId : req?.body?.biodataId}
-  const isExisted = await favoritesCollection.findOne(query)
-  if(isExisted){
-    res.send({message : "already included"})
-    return
-  }
+  // const query1 = {biodataId : req?.body?.biodataId}
+  // const query2 = {userEmail : req?.body?.userEmail}
+  // const isExisted = await favoritesCollection.findOne(query1)
+  // const isExistedRequesterEmail = await favoritesCollection.findOne(query2)
+  // if(isExisted && isExistedRequesterEmail){
+  //   res.send({message : "already included"})
+  //   return
+  // }
 
  
   const result =await favoritesCollection.insertOne(favorite)
@@ -174,6 +177,11 @@ app.delete('/favorite/:id' ,verifyToken, async(req , res) => {
   const id = req.params.id
   const query = {_id : new ObjectId(id)}
   const result = await favoritesCollection.deleteOne(query)
+  res.send(result)
+})
+app.get('/contactRequests' , verifyToken , async(req , res) => {
+ const cursor = contactRequestCollection.find()
+  const result = await cursor.toArray()
   res.send(result)
 })
 app.post('/contactRequest' ,verifyToken, async(req , res) => {
@@ -186,7 +194,19 @@ app.get('/contactRequests' ,verifyToken, async(req, res) => {
   const result = await cursor.toArray()
   res.send(result)
 })
-app.post("/create-payment-intent", async (req, res) => {
+app.get('/contactRequests/:email' ,verifyToken, async(req, res) => {
+ const email = req.params.email
+ const query = {selfEmail : email}
+  const result = await contactRequestCollection.find(query).toArray()
+  res.send(result)
+})
+app.delete('/contactRequest/:email' ,async(req,res)=>{
+  const email = req.params.email
+  const query = {selfEmail : email}
+  const result = await contactRequestCollection.deleteOne(query)
+  res.send(result)
+})
+app.post("/create-payment-intent",verifyToken, async (req, res) => {
   const { price } = req.body;
   const amount = parseInt(price*100)
   console.log(amount)
