@@ -42,6 +42,7 @@ async function run() {
     const bioDataCollection = database.collection("biodatas")
     const favoritesCollection = database.collection("favorites")
     const premiumCollection = database.collection("premiums")
+    const contactRequestCollection = database.collection("contactRequests")
  
     // await client.connect();
 app.get('/allBiodata' , async(req , res) => {
@@ -114,22 +115,37 @@ res.send(updateResult)
 })
 app.post('/premium' , async(req , res) => {
   const premiumUser = req.body
+  const query = {biodataId : req?.body?.biodataId}
+  const isExisted = await premiumCollection.findOne(query)
+  if(isExisted){
+    res.send({message : "already included"})
+    return
+  }
   const result = await premiumCollection.insertOne(premiumUser)
   res.send(result)
 })
-// app.patch('/user/premium/:id', async(req , res) => {
-//   const id = req.params.id
-//   const filter = {biodataId : id}
-//   const options = { upsert: true }
-//   const updatedUser  = {
-//     $set : {
-//      isPremium : true
-//     }
-//   }
-//   // const result = await bioDataCollection.updateOne(filter, updatedUser, options);
-//   // res.send(result)
+// app.get('/checkPremium/:id' , async(req , res) => {
+//    const id =req.params.id
+//    const query = {biodataId : id}
+//    const biodata = await bioDataCollection.findOne(query)
+//    if(biodata?.isPremium){
+//     return res.send({isPremium : true})
+//    }
+//     res.send({isPremium : false})
 // })
-app.post('/pre')
+app.patch('/biodata/premium/:id', async(req , res) => {
+  const id = req.params.id
+  const filter = {_id : new ObjectId(id)}
+  const options = { upsert: true }
+  const updatedUser  = {
+    $set : {
+     isPremium : true
+    }
+  }
+  const result = await bioDataCollection.updateOne(filter, updatedUser, options);
+  res.send(result)
+})
+// app.post('/pre')
 app.get('/favorites/:email' , verifyToken, async(req , res) => {
   const email = req.params.email
    console.log(req.decoded?.email)
@@ -160,6 +176,32 @@ app.delete('/favorite/:id' ,verifyToken, async(req , res) => {
   const result = await favoritesCollection.deleteOne(query)
   res.send(result)
 })
+app.post('/contactRequest' ,verifyToken, async(req , res) => {
+   const contactRequest = req.body
+   const result = await contactRequestCollection.insertOne(contactRequest)
+   res.send(result)
+})
+app.get('/contactRequests' ,verifyToken, async(req, res) => {
+  const cursor = contactRequestCollection.find()
+  const result = await cursor.toArray()
+  res.send(result)
+})
+app.post("/create-payment-intent", async (req, res) => {
+  const { price } = req.body;
+  const amount = parseInt(price*100)
+  console.log(amount)
+
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: amount,
+    currency: "usd",
+    payment_method_types :['card']
+  });
+
+  res.send({
+    clientSecret: paymentIntent.client_secret,
+  })
+});
+
 
 app.post('/jwt' , async(req , res) => {
   const user = req.body
