@@ -125,6 +125,18 @@ app.post('/premium' , async(req , res) => {
   const result = await premiumCollection.insertOne(premiumUser)
   res.send(result)
 })
+app.get('/allCounts' , async(req , res) => {
+  // const maleQuery = {biodataType : "Male"}
+  // const femaleQuery = {biodataType : "Female"}
+  
+  const maleBiodata = await bioDataCollection.countDocuments({biodataType : "Male"})
+  const femaleBiodata = await bioDataCollection.countDocuments({biodataType : "Female"})
+  const premiumBiodata = await bioDataCollection.countDocuments({isPremium : true})
+  const totalBiodata =await bioDataCollection.estimatedDocumentCount()
+  const contactRequests = await contactRequestCollection.estimatedDocumentCount()
+  res.send({totalBiodata , maleBiodata , femaleBiodata , contactRequests , premiumBiodata})
+  
+})
 // app.get('/checkPremium/:id' , async(req , res) => {
 //    const id =req.params.id
 //    const query = {biodataId : id}
