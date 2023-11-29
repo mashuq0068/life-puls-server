@@ -141,7 +141,8 @@ app.get('/allCounts' , async(req , res) => {
   const premiumBiodata = await bioDataCollection.countDocuments({isPremium : true})
   const totalBiodata =await bioDataCollection.estimatedDocumentCount()
   const contactRequests = await contactRequestCollection.estimatedDocumentCount()
-  res.send({totalBiodata , maleBiodata , femaleBiodata , contactRequests , premiumBiodata})
+  const successStories = await successCollection.estimatedDocumentCount()
+  res.send({totalBiodata , maleBiodata , femaleBiodata , contactRequests , premiumBiodata , successStories})
   
 })
 app.get('/checkPremium/:email' , async(req , res) => {
@@ -150,7 +151,7 @@ app.get('/checkPremium/:email' , async(req , res) => {
 
    const biodata = await bioDataCollection.findOne(query)
    const user  = await userCollection.findOne(query)
-   if(biodata?.isPremium && user?.isPremium){
+   if(biodata?.isPremium || user?.isPremium){
     return res.send({isPremium : true})
    }
     res.send({isPremium : false})
@@ -232,9 +233,9 @@ app.delete('/contactRequest/:email' ,verifyToken,async(req,res)=>{
   const result = await contactRequestCollection.deleteOne(query)
   res.send(result)
 })
-app.patch('/contactRequest/:email' , verifyToken , async(req , res) => {
-  const email = req.params.email
-  const query = {email : email}
+app.patch('/contactRequest/:id' , verifyToken , async(req , res) => {
+  const id = req.params.id
+  const filter = {_id : new ObjectId(id)}
   const options = { upsert: true }
   const updatedUser  = {
     $set : {
@@ -276,6 +277,12 @@ app.post('/user/:email' , async(req , res) => {
 app.get('/users' ,verifyToken, async(req , res) => {
   const cursor = userCollection.find()
   const result = await cursor.toArray()
+  res.send(result)
+})
+app.get('/user/:name' ,verifyToken, async(req , res) => {
+  const name = req.params.name
+  const query = {name : name}
+  const result = await userCollection.find(query).toArray()
   res.send(result)
 })
 app.patch('/makeAdmin/:id' ,verifyToken, async(req, res) => {
@@ -325,7 +332,7 @@ app.get('/successStories' , async(req , res) => {
   const result = await cursor.toArray()
   res.send(result)
 })
-app.post('/successStory' , async(req , res) => {
+app.post('/successStory' ,verifyToken, async(req , res) => {
   const successStory = req.body
   const result = await successCollection.insertOne(successStory)
   res.send(result)
