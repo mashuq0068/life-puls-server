@@ -4,6 +4,7 @@ const port = process.env.PORT || 5000
 require ('dotenv').config()
 const cors = require('cors')
 const jwt = require("jsonwebtoken")
+
 app.use(express.json())
 app.use(cors())
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
@@ -45,8 +46,8 @@ async function run() {
     const premiumCollection = database.collection("premiums")
     const contactRequestCollection = database.collection("contactRequests")
     const userCollection = database.collection("users")
+    const successCollection = database.collection("successStories")
  
-    // await client.connect();
 app.get('/allBiodata' , async(req , res) => {
   const cursor = bioDataCollection.find()
   const result = await cursor.toArray()
@@ -115,7 +116,12 @@ res.send(updateResult)
 
 
 })
-app.post('/premium' , async(req , res) => {
+app.get('/premiums' , async(req , res) => {
+  const cursor = premiumCollection.find()
+  const result = await cursor.toArray()
+  res.send(result)
+})
+app.post('/premium' ,verifyToken, async(req , res) => {
   const premiumUser = req.body
   const query = {biodataId : req?.body?.biodataId}
   const isExisted = await premiumCollection.findOne(query)
@@ -138,18 +144,25 @@ app.get('/allCounts' , async(req , res) => {
   res.send({totalBiodata , maleBiodata , femaleBiodata , contactRequests , premiumBiodata})
   
 })
-// app.get('/checkPremium/:id' , async(req , res) => {
-//    const id =req.params.id
-//    const query = {biodataId : id}
-//    const biodata = await bioDataCollection.findOne(query)
-//    if(biodata?.isPremium){
-//     return res.send({isPremium : true})
-//    }
-//     res.send({isPremium : false})
-// })
-app.patch('/biodata/premium/:id', async(req , res) => {
-  const id = req.params.id
-  const filter = {_id : new ObjectId(id)}
+app.get('/checkPremium/:email' , async(req , res) => {
+   const email =req.params.email
+   const query = {email : email}
+
+   const biodata = await bioDataCollection.findOne(query)
+   const user  = await userCollection.findOne(query)
+   if(biodata?.isPremium && user?.isPremium){
+    return res.send({isPremium : true})
+   }
+    res.send({isPremium : false})
+})
+app.patch('/biodata/premium/:email',verifyToken, async(req , res) => {
+  const email = req.params.email
+  // if(req.decoded?.email !== email){
+  //   return res.status(403).send({message : "Forbidden Access"})
+  // }
+  // const query = {email : email}
+  // const 
+  const filter = {email : email}
   const options = { upsert: true }
   const updatedUser  = {
     $set : {
@@ -213,12 +226,26 @@ app.get('/contactRequests/:email' ,verifyToken, async(req, res) => {
   const result = await contactRequestCollection.find(query).toArray()
   res.send(result)
 })
-app.delete('/contactRequest/:email' ,async(req,res)=>{
+app.delete('/contactRequest/:email' ,verifyToken,async(req,res)=>{
   const email = req.params.email
   const query = {selfEmail : email}
   const result = await contactRequestCollection.deleteOne(query)
   res.send(result)
 })
+app.patch('/contactRequest/:email' , verifyToken , async(req , res) => {
+  const email = req.params.email
+  const query = {email : email}
+  const options = { upsert: true }
+  const updatedUser  = {
+    $set : {
+     status : "approved"
+    }
+  }
+  const result = await contactRequestCollection.updateOne(filter, updatedUser, options)
+  res.send(result)
+})
+
+
 app.post("/create-payment-intent",verifyToken, async (req, res) => {
   const { price } = req.body;
   const amount = parseInt(price*100)
@@ -234,18 +261,75 @@ app.post("/create-payment-intent",verifyToken, async (req, res) => {
     clientSecret: paymentIntent.client_secret,
   })
 });
-app.post('/user' , async(req , res) => {
-  const user = req.body
-  const result = await userCollection.insertOne(user)
-  res.send(result)
+app.post('/user/:email' , async(req , res) => {
+  const newUser = req.body
+    const email = req.params?.email
+    const query = {email:email}
+    console.log(query)
+    const isExisted  =await userCollection.findOne(query)
+    if(isExisted){
+      return res.send({massage:"No second time insert in database"})
+    }
+    const result = await userCollection.insertOne(newUser)
+ return res.send(result)
 })
-app.get('/users' , async(req , res) => {
+app.get('/users' ,verifyToken, async(req , res) => {
   const cursor = userCollection.find()
   const result = await cursor.toArray()
   res.send(result)
 })
+app.patch('/makeAdmin/:id' ,verifyToken, async(req, res) => {
+  const id = req.params.id
+  const filter = {_id : new ObjectId(id)}
+  const options = { upsert: true };
 
+  const updatedUser  = {
+    $set : {
+      role:'admin'
+    }
+  }
+  const result = await userCollection.updateOne(filter, updatedUser, options);
+    
+  res.send(result)
+})
+app.get('/checkAdmin/:email' ,verifyToken, async(req, res) => {
+  const email = req.params.email
+  console.log(req.decoded)
+  if(email !== req.decoded?.email){
+   
+    return res.status(403).send("forbidden")
+  }
+  const query = {email : email}
+  const user = await userCollection.findOne(query)
+  let admin = false
+  if(user?.role){
+   admin = true
+  }
+  res.send({admin})
+})
+app.patch('/user/:id' ,verifyToken, async(req , res) =>{
+  const id = req.params.id
+  const filter = {_id: new ObjectId(id)}
+  const options = { upsert: true };
 
+  const updatedUser  = {
+    $set : {
+      isPremium : true
+    }
+  }
+  const result = await userCollection.updateOne(filter, updatedUser, options);
+  res.send(result)
+})
+app.get('/successStories' , async(req , res) => {
+  const cursor = successCollection.find()
+  const result = await cursor.toArray()
+  res.send(result)
+})
+app.post('/successStory' , async(req , res) => {
+  const successStory = req.body
+  const result = await successCollection.insertOne(successStory)
+  res.send(result)
+})
 app.post('/jwt' , async(req , res) => {
   const user = req.body
   const token = jwt.sign(user , process.env.TOKEN_SECRET)
@@ -253,7 +337,7 @@ app.post('/jwt' , async(req , res) => {
 })
 
     // await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } 
   
   finally {
