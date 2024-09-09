@@ -187,14 +187,14 @@ app.get('/favorites/:email' , verifyToken, async(req , res) => {
 })
 app.post('/favorite',verifyToken, async(req, res) => {
   const favorite = req.body
-  // const query1 = {biodataId : req?.body?.biodataId}
-  // const query2 = {userEmail : req?.body?.userEmail}
-  // const isExisted = await favoritesCollection.findOne(query1)
-  // const isExistedRequesterEmail = await favoritesCollection.findOne(query2)
-  // if(isExisted && isExistedRequesterEmail){
-  //   res.send({message : "already included"})
-  //   return
-  // }
+  const query1 = {biodataId : req?.body?.biodataId}
+  const query2 = {userEmail : req?.body?.userEmail}
+  const isExisted = await favoritesCollection.findOne(query1)
+  const isExistedRequesterEmail = await favoritesCollection.findOne(query2)
+  if(isExisted && isExistedRequesterEmail){
+    res.send({message : "already included"})
+    return
+  }
 
  
   const result =await favoritesCollection.insertOne(favorite)
